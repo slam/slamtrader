@@ -50,6 +50,13 @@ Install nox
 $ pipx install nox
 ```
 
+Install pre-commit
+
+```
+$ pipx install pre-commit
+$ pre-commit install
+```
+
 ### Running
 
 ```
