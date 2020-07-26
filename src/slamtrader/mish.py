@@ -1,5 +1,6 @@
+import importlib
+
 import click
-import config
 
 from . import __version__
 from .brokers.tdameritrade import TdaPortfolio
@@ -9,6 +10,11 @@ from .brokers.tdameritrade import TdaPortfolio
 @click.version_option(version=__version__)
 def main():
     """ Semi-automate Mish's trading service """
+
+    try:
+        config = importlib.import_module("config")
+    except ModuleNotFoundError:
+        config = importlib.import_module("config_example")
 
     account = TdaPortfolio(
         config.tda_ira,
