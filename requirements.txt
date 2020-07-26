@@ -1,3 +1,0 @@
-tda-api
-webdriver-manager
-pytest
