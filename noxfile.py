@@ -9,7 +9,7 @@ locations = "src", "tests", "noxfile.py"
 
 @nox.session(python=["3.8"])
 def tests(session):
-    args = session.posargs
+    args = session.posargs or ["--cov"]
     session.run("poetry", "install", "--no-dev", external=True)
     install_with_constraints(session, "pytest")
     session.run("pytest", *args)
