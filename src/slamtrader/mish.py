@@ -1,8 +1,8 @@
-from brokers.tdameritrade import TdaPortfolio
 import click
 import config
 
 from . import __version__
+from .brokers.tdameritrade import TdaPortfolio
 
 
 @click.command()
