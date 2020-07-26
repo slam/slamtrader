@@ -12,14 +12,9 @@ class TdaPortfolio:
             self.c = auth.client_from_token_file(token_path, api_key)
         except FileNotFoundError:
             from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options
             from webdriver_manager.chrome import ChromeDriverManager
 
-            options = Options()
-            options.add_argument("--disable-dev-shm-usage")
-            with webdriver.Chrome(
-                ChromeDriverManager().install(), options=options
-            ) as driver:
+            with webdriver.Chrome(ChromeDriverManager().install()) as driver:
                 self.c = auth.client_from_login_flow(
                     driver, api_key, redirect_uri, token_path
                 )
