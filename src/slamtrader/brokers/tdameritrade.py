@@ -1,8 +1,8 @@
 import json
 
 from tda import auth
-from tda.orders.common import Duration, OrderType, one_cancels_other
-from tda.orders.equities import equity_sell_market, equity_sell_limit
+from tda.orders.common import Duration, one_cancels_other, OrderType
+from tda.orders.equities import equity_sell_limit, equity_sell_market
 
 
 class TdaPortfolio:
