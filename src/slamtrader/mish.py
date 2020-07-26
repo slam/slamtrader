@@ -1,9 +1,15 @@
-#!/usr/bin/env python3
-
-import config
 from brokers.tdameritrade import TdaPortfolio
+import click
+import config
 
-if __name__ == "__main__":
+from . import __version__
+
+
+@click.command()
+@click.version_option(version=__version__)
+def main():
+    """ Semi-automate Mish's trading service """
+
     account = TdaPortfolio(
         config.tda_ira,
         config.tda_api_key,

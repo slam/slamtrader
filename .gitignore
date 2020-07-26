@@ -1,4 +1,4 @@
-env
+.venv
 config.py
 tda_token
 __pycache__
