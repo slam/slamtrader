@@ -11,7 +11,9 @@ locations = "src", "tests", "noxfile.py"
 def tests(session):
     args = session.posargs or ["--cov"]
     session.run("poetry", "install", "--no-dev", external=True)
-    install_with_constraints(session, "pytest")
+    install_with_constraints(
+        session, "coverage[toml]", "pytest", "pytest-cov", "pytest-mock"
+    )
     session.run("pytest", *args)
 
 
