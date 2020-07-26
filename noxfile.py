@@ -7,7 +7,7 @@ nox.options.sessions = "lint", "safety", "tests"
 locations = "src", "tests", "noxfile.py"
 
 
-@nox.session(python=["3.8"])
+@nox.session()
 def tests(session):
     args = session.posargs or ["--cov"]
     session.run("poetry", "install", "--no-dev", external=True)
@@ -37,7 +37,7 @@ def black(session):
     session.run("black", *args)
 
 
-@nox.session(python=["3.8"])
+@nox.session()
 def lint(session):
     args = session.posargs or locations
     install_with_constraints(
