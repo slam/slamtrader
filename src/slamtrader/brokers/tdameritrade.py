@@ -116,7 +116,7 @@ class Order:
             # return f"SELL -1,200 VNM STP 13.86 GTC [TO CLOSE]"
             return (
                 f"{self.order_id} {instruction} {sign}{quantity} {symbol} {order} "
-                f"{self.duration} {effect}"
+                f"{self.duration} {effect} {self.status}"
             )
 
     @property
@@ -124,15 +124,20 @@ class Order:
         return self.raw["orderId"]
 
     @property
+    def status(self):
+        return self.raw["status"]
+
+    @property
+    def canceled(self):
+        return self.raw["status"] == "CANCELED"
+
+    @property
     def order_type(self):
         return self.raw["orderType"]
 
     @property
     def duration(self):
-        if self.raw["duration"] == "GOOD_TILL_CANCEL":
-            return "GTC"
-        else:
-            return self.raw["duration"]
+        return self.raw["duration"]
 
     @property
     def price(self):
@@ -199,6 +204,11 @@ class TdAmeritrade:
             raise BrokerException(r)
 
         return Order(r.json())
+
+    def cancel_order(self, order_id):
+        r = self.c.cancel_order(order_id, self.account_id)
+        if not r.ok:
+            raise BrokerException(r)
 
     def place_sell_stop(self, symbol, quantity, stop):
         order = (

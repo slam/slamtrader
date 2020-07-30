@@ -47,6 +47,25 @@ def list_orders(config):
         raise click.ClickException(error)
 
 
+@main.command("cancel_order")
+@click.argument("order_id")
+@click.pass_obj
+def cancel_order(config, order_id):
+    """ Cancel an order """
+    broker = get_broker(config)
+
+    try:
+        order = broker.get_order(order_id)
+        if order.canceled:
+            click.echo(f"{order.order_id} already canceled")
+            return
+        broker.cancel_order(order.order_id)
+        updated_order = broker.get_order(order.order_id)
+        click.echo(updated_order)
+    except BrokerException as error:
+        raise click.ClickException(error)
+
+
 @main.command("buy_stop")
 @click.argument("symbol", callback=upper)
 @click.argument("quantity", type=int)
@@ -80,7 +99,6 @@ def sell_stop(config, symbol, percentage, stop):
             )
         )
         order_id = broker.place_sell_stop(symbol, quantity, stop)
-        click.echo(f"Submitted order ID {order_id}")
 
         order = broker.get_order(order_id)
         click.echo(order)
