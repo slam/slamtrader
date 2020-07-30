@@ -1,6 +1,8 @@
+import datetime
 import json
 
 from tda import auth
+from tda.client import Client
 from tda.orders.common import Duration, OrderType
 from tda.orders.equities import equity_sell_market
 from tda.utils import Utils
@@ -90,19 +92,36 @@ class Order:
         self.raw = raw
 
     def __str__(self):
+        # The API only supports single leg anyways, so this for loop always
+        # returns a single leg . OCO orders, for example, are not returned,
+        # even when Thinkorswim does show them.
         for leg in self.raw["orderLegCollection"]:
             instruction = leg["instruction"]
             quantity = int(leg["quantity"])
+
+            sign = "+"
             if instruction == "SELL":
-                quantity *= -1
+                sign = "-"
+            else:
+                sign = "+"
+
             symbol = leg["instrument"]["symbol"]
+            if self.order_type == "STOP" or self.order_type == "LIMIT":
+                order = f"{self.order_type} {self.price}"
+            else:
+                order = f"{self.order_type}"
+
             effect = leg["positionEffect"]
 
             # return f"SELL -1,200 VNM STP 13.86 GTC [TO CLOSE]"
             return (
-                f"{instruction} {quantity} {symbol} {self.order_type} "
-                f"{self.price} {self.duration} {effect}"
+                f"{self.order_id} {instruction} {sign}{quantity} {symbol} {order} "
+                f"{self.duration} {effect}"
             )
+
+    @property
+    def order_id(self):
+        return self.raw["orderId"]
 
     @property
     def order_type(self):
@@ -110,14 +129,17 @@ class Order:
 
     @property
     def duration(self):
-        return self.raw["duration"]
+        if self.raw["duration"] == "GOOD_TILL_CANCEL":
+            return "GTC"
+        else:
+            return self.raw["duration"]
 
     @property
     def price(self):
         if "stopPrice" in self.raw:
             return self.raw["stopPrice"]
         else:
-            return 0
+            return self.raw["price"]
 
 
 class TdAmeritrade:
@@ -152,6 +174,24 @@ class TdAmeritrade:
         if symbol in positions:
             return positions[symbol]
         return None
+
+    def get_orders(self):
+        # tda.debug.enable_bug_report_logging()
+
+        from_date = datetime.datetime.today() + datetime.timedelta(-30)
+        r = self.c.get_orders_by_path(
+            self.account_id,
+            # must specify from_date or the result would be empty
+            from_entered_datetime=from_date,
+            status=Client.Order.Status.QUEUED,
+        )
+        if not r.ok:
+            raise BrokerException(r)
+
+        orders = []
+        for order in r.json():
+            orders.append(Order(order))
+        return orders
 
     def get_order(self, order_id):
         r = self.c.get_order(order_id, self.account_id)

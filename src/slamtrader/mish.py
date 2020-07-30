@@ -6,6 +6,15 @@ from . import __version__
 from .brokers.tdameritrade import BrokerException, TdAmeritrade
 
 
+def get_broker(config):
+    return TdAmeritrade(
+        config.tda_ira,
+        config.tda_api_key,
+        config.tda_token_path,
+        config.tda_redirect_uri,
+    )
+
+
 def upper(ctx, param, value):
     return value.upper()
 
@@ -22,6 +31,20 @@ def main(ctx):
         config = importlib.import_module("config_example")
 
     ctx.obj = config
+
+
+@main.command("list_orders")
+@click.pass_obj
+def list_orders(config):
+    """ List all active orders """
+    broker = get_broker(config)
+
+    try:
+        orders = broker.get_orders()
+        for order in orders:
+            click.echo(order)
+    except BrokerException as error:
+        raise click.ClickException(error)
 
 
 @main.command("buy_stop")
@@ -43,12 +66,7 @@ def buy_stop(config, symbol, quantity, stop):
 def sell_stop(config, symbol, percentage, stop):
     """ Sell a stock with a sell stop """
 
-    broker = TdAmeritrade(
-        config.tda_ira,
-        config.tda_api_key,
-        config.tda_token_path,
-        config.tda_redirect_uri,
-    )
+    broker = get_broker(config)
 
     try:
         position = broker.get_position(symbol)
