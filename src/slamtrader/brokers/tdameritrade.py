@@ -4,7 +4,7 @@ import json
 from tda import auth
 from tda.client import Client
 from tda.orders.common import Duration, OrderType
-from tda.orders.equities import equity_sell_market
+from tda.orders.equities import equity_buy_limit, equity_buy_market, equity_sell_market
 from tda.utils import Utils
 
 
@@ -209,6 +209,33 @@ class TdAmeritrade:
         r = self.c.cancel_order(order_id, self.account_id)
         if not r.ok:
             raise BrokerException(r)
+
+    def place_buy_market(self, symbol, quantity):
+        order = (
+            # market order can only be a day order
+            equity_buy_market(symbol, quantity)
+        ).build()
+
+        r = self.c.place_order(self.account_id, order)
+        if not r.ok:
+            raise BrokerException(r)
+
+        order_id = Utils(self.c, self.account_id).extract_order_id(r)
+        return order_id
+
+    def place_buy_limit(self, symbol, quantity, limit):
+        order = (
+            equity_buy_limit(symbol, quantity, limit).set_duration(
+                Duration.GOOD_TILL_CANCEL
+            )
+        ).build()
+
+        r = self.c.place_order(self.account_id, order)
+        if not r.ok:
+            raise BrokerException(r)
+
+        order_id = Utils(self.c, self.account_id).extract_order_id(r)
+        return order_id
 
     def place_sell_stop(self, symbol, quantity, stop):
         order = (

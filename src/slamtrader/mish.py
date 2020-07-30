@@ -56,25 +56,49 @@ def cancel_order(config, order_id):
 
     try:
         order = broker.get_order(order_id)
+        # This check is not entirely reliable. A canceled order could stay in
+        # QUEUED state for many seconds
         if order.canceled:
-            click.echo(f"{order.order_id} already canceled")
-            return
+            raise click.ClickException(f"{order.order_id} already canceled")
         broker.cancel_order(order.order_id)
-        updated_order = broker.get_order(order.order_id)
-        click.echo(updated_order)
+        click.echo(f"{order.order_id} canceled")
     except BrokerException as error:
         raise click.ClickException(error)
 
 
-@main.command("buy_stop")
+@main.command("buy_market")
 @click.argument("symbol", callback=upper)
 @click.argument("quantity", type=int)
-@click.argument("stop", type=float)
 @click.pass_obj
-def buy_stop(config, symbol, quantity, stop):
+def buy_market(config, symbol, quantity):
+    """ Buy a stock at market """
+
+    broker = get_broker(config)
+
+    try:
+        order_id = broker.place_buy_market(symbol, quantity)
+        order = broker.get_order(order_id)
+        click.echo(order)
+    except BrokerException as error:
+        raise click.ClickException(error)
+
+
+@main.command("buy_limit")
+@click.argument("symbol", callback=upper)
+@click.argument("quantity", type=int)
+@click.argument("limit", type=float)
+@click.pass_obj
+def buy_limit(config, symbol, quantity, limit):
     """ Buy a stock with a buy stop """
 
-    click.echo(f"Buying {quantity} share of {symbol} with buy stop at ${stop}")
+    broker = get_broker(config)
+
+    try:
+        order_id = broker.place_buy_limit(symbol, quantity, limit)
+        order = broker.get_order(order_id)
+        click.echo(order)
+    except BrokerException as error:
+        raise click.ClickException(error)
 
 
 @main.command("sell_stop")
@@ -90,7 +114,7 @@ def sell_stop(config, symbol, percentage, stop):
     try:
         position = broker.get_position(symbol)
         if not position:
-            raise click.ClickException(f"Not position in symbol {symbol}")
+            raise click.ClickException(f"No position in {symbol}")
         quantity = int(round(position.long * (percentage / 100), 0))
         click.echo(
             (
