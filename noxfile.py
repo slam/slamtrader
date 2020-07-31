@@ -3,7 +3,7 @@ import tempfile
 import nox
 
 
-nox.options.sessions = "lint", "safety", "tests"
+nox.options.sessions = "lint", "safety", "mypy", "tests"
 locations = "src", "tests", "noxfile.py"
 
 
@@ -30,7 +30,7 @@ def install_with_constraints(session, *args, **kwargs):
         session.install(f"--constraint={requirements.name}", *args, **kwargs)
 
 
-@nox.session(python="3.8")
+@nox.session()
 def black(session):
     args = session.posargs or locations
     install_with_constraints(session, "black")
@@ -51,7 +51,7 @@ def lint(session):
     session.run("flake8", *args)
 
 
-@nox.session(python="3.8")
+@nox.session()
 def safety(session):
     with tempfile.NamedTemporaryFile() as requirements:
         session.run(
@@ -65,3 +65,10 @@ def safety(session):
         )
         install_with_constraints(session, "safety")
         session.run("safety", "check", f"--file={requirements.name}", "--full-report")
+
+
+@nox.session()
+def mypy(session):
+    args = session.posargs or locations
+    install_with_constraints(session, "mypy")
+    session.run("mypy", *args)
