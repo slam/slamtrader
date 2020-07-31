@@ -1,3 +1,4 @@
+from decimal import Decimal
 import importlib
 
 import click
@@ -106,9 +107,9 @@ def buy_limit(config, symbol: str, quantity: int, limit) -> None:
 @main.command("sell_stop")
 @click.argument("symbol", callback=upper)
 @click.argument("percentage", type=float)
-@click.argument("stop", type=float)
+@click.argument("stop", type=Decimal)
 @click.pass_obj
-def sell_stop(config, symbol: str, percentage: float, stop) -> None:
+def sell_stop(config, symbol: str, percentage: float, stop: Decimal) -> None:
     """ Sell a stock with a sell stop """
 
     broker = get_broker(config)

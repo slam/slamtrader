@@ -1,5 +1,7 @@
 import datetime
+from decimal import Decimal
 import json
+from typing import Dict, List, Optional
 
 from tda import auth
 from tda.orders.common import Duration, OrderType
@@ -17,7 +19,7 @@ class BrokerException(Exception):
 
 
 class Position:
-    def __init__(self, raw):
+    def __init__(self, raw) -> None:
         # {
         #     "shortQuantity": 0.0,
         #     "averagePrice": 399.95,
@@ -37,24 +39,24 @@ class Position:
         self.raw = raw
 
     @property
-    def symbol(self):
+    def symbol(self) -> str:
         return self.raw["instrument"]["symbol"]
 
     @property
-    def long(self):
+    def long(self) -> int:
         return self.raw["longQuantity"]
 
     @property
-    def short(self):
+    def short(self) -> int:
         return self.raw["shortQuantity"]
 
     @property
-    def trade_price(self):
-        return self.raw["averagePrice"]
+    def trade_price(self) -> Decimal:
+        return Decimal(self.raw["averagePrice"])
 
 
 class Order:
-    def __init__(self, raw):
+    def __init__(self, raw) -> None:
         # {
         #     "session": "NORMAL",
         #     "duration": "GOOD_TILL_CANCEL",
@@ -90,7 +92,7 @@ class Order:
         # }
         self.raw = raw
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.is_single:
             # The API only supports single leg anyways, so this for loop always
             # returns a single leg . OCO orders, for example, are not returned,
@@ -129,15 +131,15 @@ class Order:
             raise BrokerException(f"Unhandled orderStrategyType {self.strategy_type}")
 
     @property
-    def order_id(self):
+    def order_id(self) -> str:
         return self.raw["orderId"]
 
     @property
-    def status(self):
+    def status(self) -> str:
         return self.raw["status"]
 
     @property
-    def active(self):
+    def active(self) -> bool:
         if self.is_single:
             return (
                 self.status != "CANCELED"
@@ -156,26 +158,26 @@ class Order:
             raise BrokerException(f"Unhandled orderStrategyType {self.strategy_type}")
 
     @property
-    def strategy_type(self):
+    def strategy_type(self) -> str:
         return self.raw["orderStrategyType"]
 
     @property
-    def is_single(self):
+    def is_single(self) -> bool:
         return self.strategy_type == "SINGLE"
 
-    def is_oco(self):
+    def is_oco(self) -> bool:
         return self.strategy_type == "OCO"
 
     @property
-    def order_type(self):
+    def order_type(self) -> str:
         return self.raw["orderType"]
 
     @property
-    def duration(self):
+    def duration(self) -> str:
         return self.raw["duration"]
 
     @property
-    def price(self):
+    def price(self) -> float:
         if "stopPrice" in self.raw:
             return self.raw["stopPrice"]
         else:
@@ -183,7 +185,9 @@ class Order:
 
 
 class TdAmeritrade:
-    def __init__(self, account_id, api_key, token_path, redirect_uri):
+    def __init__(
+        self, account_id: str, api_key: str, token_path: str, redirect_uri: str
+    ) -> None:
         self.account_id = account_id
         try:
             self.c = auth.client_from_token_file(token_path, api_key)
@@ -196,7 +200,7 @@ class TdAmeritrade:
                     driver, api_key, redirect_uri, token_path
                 )
 
-    def get_positions(self):
+    def get_positions(self) -> Dict[str, Position]:
         r = self.c.get_account(self.account_id, fields=self.c.Account.Fields.POSITIONS)
         if not r.ok:
             raise BrokerException(r)
@@ -209,13 +213,13 @@ class TdAmeritrade:
             positions[position.symbol] = position
         return positions
 
-    def get_position(self, symbol):
+    def get_position(self, symbol: str) -> Optional[Position]:
         positions = self.get_positions()
         if symbol in positions:
             return positions[symbol]
         return None
 
-    def get_orders(self):
+    def get_orders(self) -> List[Order]:
         # tda.debug.enable_bug_report_logging()
 
         from_date = datetime.datetime.today() + datetime.timedelta(-60)
@@ -239,19 +243,19 @@ class TdAmeritrade:
             orders.append(Order(order))
         return orders
 
-    def get_order(self, order_id):
+    def get_order(self, order_id: str) -> Order:
         r = self.c.get_order(order_id, self.account_id)
         if not r.ok:
             raise BrokerException(r)
 
         return Order(r.json())
 
-    def cancel_order(self, order_id):
+    def cancel_order(self, order_id: str) -> None:
         r = self.c.cancel_order(order_id, self.account_id)
         if not r.ok:
             raise BrokerException(r)
 
-    def place_buy_market(self, symbol, quantity):
+    def place_buy_market(self, symbol: str, quantity: int) -> str:
         order = (
             # market order can only be a day order
             equity_buy_market(symbol, quantity)
@@ -264,7 +268,7 @@ class TdAmeritrade:
         order_id = Utils(self.c, self.account_id).extract_order_id(r)
         return order_id
 
-    def place_buy_limit(self, symbol, quantity, limit):
+    def place_buy_limit(self, symbol: str, quantity: int, limit: Decimal) -> str:
         order = (
             equity_buy_limit(symbol, quantity, limit).set_duration(
                 Duration.GOOD_TILL_CANCEL
@@ -278,7 +282,7 @@ class TdAmeritrade:
         order_id = Utils(self.c, self.account_id).extract_order_id(r)
         return order_id
 
-    def place_sell_stop(self, symbol, quantity, stop):
+    def place_sell_stop(self, symbol: str, quantity: int, stop: Decimal):
         order = (
             equity_sell_market(symbol, quantity)
             .set_order_type(OrderType.STOP)
