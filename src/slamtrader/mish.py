@@ -34,15 +34,17 @@ def main(ctx):
 
 
 @main.command("list_orders")
+@click.option("-a", "--all", is_flag=True, default=False)
 @click.pass_obj
-def list_orders(config):
+def list_orders(config, all):
     """ List all active orders """
     broker = get_broker(config)
 
     try:
         orders = broker.get_orders()
         for order in orders:
-            click.echo(order)
+            if order.active or all:
+                click.echo(order)
     except BrokerException as error:
         raise click.ClickException(error)
 
@@ -58,8 +60,8 @@ def cancel_order(config, order_id):
         order = broker.get_order(order_id)
         # This check is not entirely reliable. A canceled order could stay in
         # QUEUED state for many seconds
-        if order.canceled:
-            raise click.ClickException(f"{order.order_id} already canceled")
+        if not order.active:
+            raise click.ClickException(f"{order.order_id} is not active")
         broker.cancel_order(order.order_id)
         click.echo(f"{order.order_id} canceled")
     except BrokerException as error:

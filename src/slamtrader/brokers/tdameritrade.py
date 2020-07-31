@@ -2,7 +2,6 @@ import datetime
 import json
 
 from tda import auth
-from tda.client import Client
 from tda.orders.common import Duration, OrderType
 from tda.orders.equities import equity_buy_limit, equity_buy_market, equity_sell_market
 from tda.utils import Utils
@@ -92,32 +91,42 @@ class Order:
         self.raw = raw
 
     def __str__(self):
-        # The API only supports single leg anyways, so this for loop always
-        # returns a single leg . OCO orders, for example, are not returned,
-        # even when Thinkorswim does show them.
-        for leg in self.raw["orderLegCollection"]:
-            instruction = leg["instruction"]
-            quantity = int(leg["quantity"])
+        if self.is_single:
+            # The API only supports single leg anyways, so this for loop always
+            # returns a single leg . OCO orders, for example, are not returned,
+            # even when Thinkorswim does show them.
+            for leg in self.raw["orderLegCollection"]:
+                instruction = leg["instruction"]
+                quantity = int(leg["quantity"])
 
-            sign = "+"
-            if instruction == "SELL":
-                sign = "-"
-            else:
                 sign = "+"
+                if instruction == "SELL":
+                    sign = "-"
+                else:
+                    sign = "+"
 
-            symbol = leg["instrument"]["symbol"]
-            if self.order_type == "STOP" or self.order_type == "LIMIT":
-                order = f"{self.order_type} {self.price}"
-            else:
-                order = f"{self.order_type}"
+                symbol = leg["instrument"]["symbol"]
+                if self.order_type == "STOP" or self.order_type == "LIMIT":
+                    order = f"{self.order_type} {self.price}"
+                else:
+                    order = f"{self.order_type}"
 
-            effect = leg["positionEffect"]
+                effect = leg["positionEffect"]
 
-            # return f"SELL -1,200 VNM STP 13.86 GTC [TO CLOSE]"
-            return (
-                f"{self.order_id} {instruction} {sign}{quantity} {symbol} {order} "
-                f"{self.duration} {effect} {self.status}"
-            )
+                # return f"SELL -1,200 VNM STP 13.86 GTC [TO CLOSE]"
+                return (
+                    f"{self.order_id} {instruction} {sign}{quantity} {symbol} {order} "
+                    f"{self.duration} {effect} {self.status}"
+                )
+        elif self.is_oco:
+            str = [f"{self.order_id} OCO"]
+            for child in self.raw["childOrderStrategies"]:
+                child_order = Order(child)
+                str.append(f"    {child_order}")
+
+            return "\n".join(str)
+        else:
+            raise BrokerException(f"Unhandled orderStrategyType {self.strategy_type}")
 
     @property
     def order_id(self):
@@ -128,8 +137,34 @@ class Order:
         return self.raw["status"]
 
     @property
-    def canceled(self):
-        return self.raw["status"] == "CANCELED"
+    def active(self):
+        if self.is_single:
+            return (
+                self.status != "CANCELED"
+                and self.status != "EXPIRED"
+                and self.status != "FILLED"
+                and self.status != "REJECTED"
+                and self.status != "REPLACED"
+            )
+        elif self.is_oco:
+            active = False
+            for child in self.raw["childOrderStrategies"]:
+                child_order = Order(child)
+                active |= child_order.active
+            return active
+        else:
+            raise BrokerException(f"Unhandled orderStrategyType {self.strategy_type}")
+
+    @property
+    def strategy_type(self):
+        return self.raw["orderStrategyType"]
+
+    @property
+    def is_single(self):
+        return self.strategy_type == "SINGLE"
+
+    def is_oco(self):
+        return self.strategy_type == "OCO"
 
     @property
     def order_type(self):
@@ -183,18 +218,24 @@ class TdAmeritrade:
     def get_orders(self):
         # tda.debug.enable_bug_report_logging()
 
-        from_date = datetime.datetime.today() + datetime.timedelta(-30)
+        from_date = datetime.datetime.today() + datetime.timedelta(-60)
         r = self.c.get_orders_by_path(
             self.account_id,
             # must specify from_date or the result would be empty
             from_entered_datetime=from_date,
-            status=Client.Order.Status.QUEUED,
+            # The api only accept a single status as filter, not an array
+            # Get everything and filter ourselves.
+            #
+            # Also, with a status filter the API doesn't return any OCO
+            # orders, even if the status of the OCO matches the filter.
+            # statuses=[Client.Order.Status.QUEUED],
         )
         if not r.ok:
             raise BrokerException(r)
 
         orders = []
         for order in r.json():
+            # print(json.dumps(order, indent=4))
             orders.append(Order(order))
         return orders
 
