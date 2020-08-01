@@ -97,6 +97,7 @@ class Order:
             # The API only supports single leg anyways, so this for loop always
             # returns a single leg . OCO orders, for example, are not returned,
             # even when Thinkorswim does show them.
+            str = []
             for leg in self.raw["orderLegCollection"]:
                 instruction = leg["instruction"]
                 quantity = int(leg["quantity"])
@@ -116,10 +117,11 @@ class Order:
                 effect = leg["positionEffect"]
 
                 # return f"SELL -1,200 VNM STP 13.86 GTC [TO CLOSE]"
-                return (
+                str.append(
                     f"{self.order_id} {instruction} {sign}{quantity} {symbol} {order} "
                     f"{self.duration} {effect} {self.status}"
                 )
+            return "\n".join(str)
         elif self.is_oco:
             str = [f"{self.order_id} OCO"]
             for child in self.raw["childOrderStrategies"]:
