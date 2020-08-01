@@ -1,3 +1,4 @@
+from decimal import Decimal
 import importlib
 
 import click
@@ -22,7 +23,7 @@ def upper(ctx, param, value):
 @click.group()
 @click.version_option(version=__version__)
 @click.pass_context
-def main(ctx):
+def main(ctx: click.Context) -> None:
     """ Semi-automate Mish's trading service """
 
     try:
@@ -36,7 +37,7 @@ def main(ctx):
 @main.command("list_orders")
 @click.option("-a", "--all", is_flag=True, default=False)
 @click.pass_obj
-def list_orders(config, all):
+def list_orders(config, all: bool) -> None:
     """ List all active orders """
     broker = get_broker(config)
 
@@ -46,13 +47,13 @@ def list_orders(config, all):
             if order.active or all:
                 click.echo(order)
     except BrokerException as error:
-        raise click.ClickException(error)
+        raise click.ClickException(str(error))
 
 
 @main.command("cancel_order")
 @click.argument("order_id")
 @click.pass_obj
-def cancel_order(config, order_id):
+def cancel_order(config, order_id: str):
     """ Cancel an order """
     broker = get_broker(config)
 
@@ -65,14 +66,14 @@ def cancel_order(config, order_id):
         broker.cancel_order(order.order_id)
         click.echo(f"{order.order_id} canceled")
     except BrokerException as error:
-        raise click.ClickException(error)
+        raise click.ClickException(str(error))
 
 
 @main.command("buy_market")
 @click.argument("symbol", callback=upper)
 @click.argument("quantity", type=int)
 @click.pass_obj
-def buy_market(config, symbol, quantity):
+def buy_market(config, symbol: str, quantity: int) -> None:
     """ Buy a stock at market """
 
     broker = get_broker(config)
@@ -82,7 +83,7 @@ def buy_market(config, symbol, quantity):
         order = broker.get_order(order_id)
         click.echo(order)
     except BrokerException as error:
-        raise click.ClickException(error)
+        raise click.ClickException(str(error))
 
 
 @main.command("buy_limit")
@@ -90,7 +91,7 @@ def buy_market(config, symbol, quantity):
 @click.argument("quantity", type=int)
 @click.argument("limit", type=float)
 @click.pass_obj
-def buy_limit(config, symbol, quantity, limit):
+def buy_limit(config, symbol: str, quantity: int, limit) -> None:
     """ Buy a stock with a buy stop """
 
     broker = get_broker(config)
@@ -100,15 +101,15 @@ def buy_limit(config, symbol, quantity, limit):
         order = broker.get_order(order_id)
         click.echo(order)
     except BrokerException as error:
-        raise click.ClickException(error)
+        raise click.ClickException(str(error))
 
 
 @main.command("sell_stop")
 @click.argument("symbol", callback=upper)
 @click.argument("percentage", type=float)
-@click.argument("stop", type=float)
+@click.argument("stop", type=Decimal)
 @click.pass_obj
-def sell_stop(config, symbol, percentage, stop):
+def sell_stop(config, symbol: str, percentage: float, stop: Decimal) -> None:
     """ Sell a stock with a sell stop """
 
     broker = get_broker(config)
@@ -129,4 +130,4 @@ def sell_stop(config, symbol, percentage, stop):
         order = broker.get_order(order_id)
         click.echo(order)
     except BrokerException as error:
-        raise click.ClickException(error)
+        raise click.ClickException(str(error))
