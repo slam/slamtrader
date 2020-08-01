@@ -229,9 +229,9 @@ def mock_tda_client(mocker):
 
 
 def test_get_positions(broker: TdAmeritrade, mock_tda_client):
-    (
-        mock_tda_client.return_value.get_account.return_value.json.return_value
-    ) = json.loads(TEST_ACCOUNT_DETAILS)
+    mock_tda_client.return_value.get_account().json.return_value = json.loads(
+        TEST_ACCOUNT_DETAILS
+    )
 
     positions = broker.get_positions()
     nvda = positions["NVDA"]
@@ -242,3 +242,190 @@ def test_get_positions(broker: TdAmeritrade, mock_tda_client):
 
     with pytest.raises(KeyError):
         positions["NONE"]
+
+
+def test_get_order_limit_filled(broker: TdAmeritrade, mock_tda_client):
+    mock_tda_client.return_value.get_orders_by_path().json.return_value = json.loads(
+        """
+[
+    {
+        "session": "NORMAL",
+        "duration": "DAY",
+        "orderType": "LIMIT",
+        "complexOrderStrategyType": "NONE",
+        "quantity": 1700.0,
+        "filledQuantity": 1700.0,
+        "remainingQuantity": 0.0,
+        "requestedDestination": "AUTO",
+        "destinationLinkName": "AutoRoute",
+        "price": 6.07,
+        "orderLegCollection": [
+            {
+                "orderLegType": "EQUITY",
+                "legId": 1,
+                "instrument": {
+                    "assetType": "EQUITY",
+                    "cusip": "88166A409",
+                    "symbol": "CANE"
+                },
+                "instruction": "BUY",
+                "positionEffect": "OPENING",
+                "quantity": 1700.0
+            }
+        ],
+        "orderStrategyType": "SINGLE",
+        "orderId": 3137940895,
+        "cancelable": false,
+        "editable": false,
+        "status": "FILLED",
+        "enteredTime": "2020-07-31T19:59:04+0000",
+        "closeTime": "2020-07-31T19:59:04+0000",
+        "accountId": 12345678,
+        "orderActivityCollection": [
+            {
+                "activityType": "EXECUTION",
+                "executionType": "FILL",
+                "quantity": 800.0,
+                "orderRemainingQuantity": 900.0,
+                "executionLegs": [
+                    {
+                        "legId": 1,
+                        "quantity": 800.0,
+                        "mismarkedQuantity": 0.0,
+                        "price": 6.065,
+                        "time": "2020-07-31T19:59:04+0000"
+                    }
+                ]
+            },
+            {
+                "activityType": "EXECUTION",
+                "executionType": "FILL",
+                "quantity": 700.0,
+                "orderRemainingQuantity": 200.0,
+                "executionLegs": [
+                    {
+                        "legId": 1,
+                        "quantity": 700.0,
+                        "mismarkedQuantity": 0.0,
+                        "price": 6.065,
+                        "time": "2020-07-31T19:59:04+0000"
+                    }
+                ]
+            },
+            {
+                "activityType": "EXECUTION",
+                "executionType": "FILL",
+                "quantity": 200.0,
+                "orderRemainingQuantity": 0.0,
+                "executionLegs": [
+                    {
+                        "legId": 1,
+                        "quantity": 200.0,
+                        "mismarkedQuantity": 0.0,
+                        "price": 6.065,
+                        "time": "2020-07-31T19:59:04+0000"
+                    }
+                ]
+            }
+        ]
+    }
+]
+"""
+    )
+
+    orders = broker.get_orders()
+    assert len(orders) == 1
+    assert str(orders[0]) == "3137940895 BUY +1700 CANE LIMIT 6.07 DAY OPENING FILLED"
+
+
+def test_get_order_oco(broker: TdAmeritrade, mock_tda_client):
+    mock_tda_client.return_value.get_orders_by_path().json.return_value = json.loads(
+        """
+[
+    {
+        "orderStrategyType": "OCO",
+        "orderId": 3052309434,
+        "cancelable": false,
+        "editable": false,
+        "accountId": 12345678,
+        "childOrderStrategies": [
+            {
+                "session": "NORMAL",
+                "duration": "DAY",
+                "orderType": "LIMIT",
+                "complexOrderStrategyType": "NONE",
+                "quantity": 200.0,
+                "filledQuantity": 0.0,
+                "remainingQuantity": 0.0,
+                "requestedDestination": "AUTO",
+                "destinationLinkName": "AutoRoute",
+                "price": 15.44,
+                "orderLegCollection": [
+                    {
+                        "orderLegType": "EQUITY",
+                        "legId": 1,
+                        "instrument": {
+                            "assetType": "EQUITY",
+                            "cusip": "92189F817",
+                            "symbol": "VNM"
+                        },
+                        "instruction": "SELL",
+                        "positionEffect": "CLOSING",
+                        "quantity": 200.0
+                    }
+                ],
+                "orderStrategyType": "SINGLE",
+                "orderId": 3051739656,
+                "cancelable": false,
+                "editable": false,
+                "status": "EXPIRED",
+                "enteredTime": "2020-07-13T13:43:44+0000",
+                "accountId": 12345678
+            },
+            {
+                "session": "NORMAL",
+                "duration": "DAY",
+                "orderType": "STOP",
+                "complexOrderStrategyType": "NONE",
+                "quantity": 400.0,
+                "filledQuantity": 0.0,
+                "remainingQuantity": 0.0,
+                "requestedDestination": "AUTO",
+                "destinationLinkName": "AutoRoute",
+                "stopPrice": 13.91,
+                "orderLegCollection": [
+                    {
+                        "orderLegType": "EQUITY",
+                        "legId": 1,
+                        "instrument": {
+                            "assetType": "EQUITY",
+                            "cusip": "92189F817",
+                            "symbol": "VNM"
+                        },
+                        "instruction": "SELL",
+                        "positionEffect": "CLOSING",
+                        "quantity": 400.0
+                    }
+                ],
+                "orderStrategyType": "SINGLE",
+                "orderId": 3052309434,
+                "cancelable": false,
+                "editable": false,
+                "status": "EXPIRED",
+                "enteredTime": "2020-07-13T14:08:39+0000",
+                "accountId": 12345678
+            }
+        ]
+    }
+]
+"""
+    )
+
+    orders = broker.get_orders()
+    assert len(orders) == 1
+    assert (
+        str(orders[0])
+        == """3052309434 OCO
+    3051739656 SELL -200 VNM LIMIT 15.44 DAY CLOSING EXPIRED
+    3052309434 SELL -400 VNM STOP 13.91 DAY CLOSING EXPIRED"""
+    )

@@ -239,6 +239,7 @@ class TdAmeritrade:
         if not r.ok:
             raise BrokerException(r)
 
+        # print(json.dumps(r.json(), indent=4))
         orders = []
         for order in r.json():
             # print(json.dumps(order, indent=4))
